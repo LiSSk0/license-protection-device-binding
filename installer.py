@@ -268,7 +268,7 @@ def do_install(target: dict, source_app_dir: str, log):
     log(f"Скопировано объектов: {copied}")
 
     # контрольные данные
-    bind_string = target['serial'] + '|' + target['root']  # например 1A2B3C4D|E:\
+    bind_string = target['serial']  # серийник
     # записываем их в скрытую папку data_dir в три файла с разными методами шифрования
 
     # ctl1: двойная перестановка
