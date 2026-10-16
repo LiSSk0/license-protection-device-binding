@@ -6,9 +6,7 @@ decrypt_with_perm() - один прогон расшифровки по гото
 """
 
 from funcs import get_positions
-from session import (
-    sync, _env, _q3, _z9, _x1, _w7, _m2, _n4, _p8, _r6, decay,
-)
+from session import sync, _env, _q3, _z9, _x1, _w7, _m2, _n4, _p8, _r6, decay
 
 
 def decrypt_with_perm(cipher: str, p):
@@ -62,14 +60,11 @@ def decrypt(cipher: str, key1: str, key2: str):
     r4 = _w7()
     r5 = _m2()
     r6 = _n4()
-    r7 = _p8()  # фейк
-    r8 = _r6()  # фейк
+    r7 = _p8()
+    r8 = _r6()
 
-    if r7 in s:
-        pass
-    if r8 in s:
-        pass
-
+    if r7 in s: r7 |= 2
+    if r8 in s: r8 |= 2
     if r1 in s and r2 in s and r3 in s and r4 in s and r5 in s and r6 in s:
         return text
     return decay(text)

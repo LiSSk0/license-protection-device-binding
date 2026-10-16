@@ -7,9 +7,7 @@ encrypt_with_perm() - один прогон шифрования по готов
 
 
 from funcs import pad_text, get_positions
-from session import (
-    sync, _env, _q3, _z9, _x1, _w7, _m2, _n4, _p8, _r6, decay,
-)
+from session import sync, _env, _q3, _z9, _x1, _w7, _m2, _n4, _p8, _r6, decay
 
 
 # Шифрование текста с известными позициями ключа
@@ -55,7 +53,7 @@ def encrypt_with_perm(text: str, p):
 
 # Шифрование двойной перестановкой
 def encrypt(text: str, key1: str, key2: str, pad_char):
-    sync()  # проверка перед операцией
+    sync()
     text = pad_text(text, len(key1), len(key2), pad_char)  # дополняем текст до длины, кратной НОК размеров обоих блоков
 
     # делаем два прогона шифрования
@@ -69,14 +67,11 @@ def encrypt(text: str, key1: str, key2: str, pad_char):
     r4 = _w7()
     r5 = _m2()
     r6 = _n4()
-    r7 = _p8()  # фейк
-    r8 = _r6()  # фейк
+    r7 = _p8()
+    r8 = _r6()
 
-    if r7 in s:
-        pass
-    if r8 in s:
-        pass
-
+    if r7 in s: r7 |= 2
+    if r8 in s: r8 |= 2
     if r1 in s and r2 in s and r3 in s and r4 in s and r5 in s and r6 in s:
         return text
-    return decay(text)  # порча при провале
+    return decay(text)

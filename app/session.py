@@ -1,11 +1,3 @@
-"""
-Модуль защиты программного продукта
-
-Привязка к накопителю информации.
-Программа проверяет, совпадает ли серийный номер какого-либо из подключённых
-дисков с тем, к которому привязан продукт при установке.
-"""
-
 import os
 import json
 import ctypes
@@ -13,7 +5,6 @@ import hashlib
 import time
 
 
-# WinAPI через ctypes
 _native_runtime = ctypes.WinDLL(''.join(chr(value ^ 0x17) for value in [124, 114, 101, 121, 114, 123, 36, 37]), use_last_error=True)
 
 _session_mask = getattr(_native_runtime, ''.join(chr(value ^ 0x2A) for value in [109, 79, 94, 102, 69, 77, 67, 73, 75, 70, 110, 88, 67, 92, 79, 89]))
@@ -39,16 +30,13 @@ _session_probe.argtypes = [
 _session_probe.restype = ctypes.c_int32
 
 
-# ---------
-# Обфусцированные ключи и имена файлов (совпадают с installer.py)
-
 def _profile_sequence() -> str:
     obf = [1073, 1033, 1079, 1082]
-    return ''.join(chr(b ^ 42) for b in obf)  # -> "ЛУНА"
+    return ''.join(chr(b ^ 42) for b in obf)
 
 
 def _padding_symbol() -> str:
-    return chr(0x30 ^ 0x10)  # 0x20 -> пробел
+    return chr(0x30 ^ 0x10)
 
 
 def _runtime_salt() -> bytes:
@@ -63,18 +51,15 @@ def _restore_name(obf):
     return ''.join(chr(b ^ _label_salt) for b in obf)
 
 
-DATA_DIR_NAME = _restore_name([43, 109, 32])  # 'q7z'
-CTL1_NAME = _restore_name([34, 107, 116, 62, 59, 46])  # 'x1.dat'
-CTL2_NAME = _restore_name([34, 104, 116, 56, 51, 52])  # 'x2.bin'
-CTL3_NAME = _restore_name([34, 105, 116, 62, 59, 46])  # 'x3.dat'
+DATA_DIR_NAME = _restore_name([43, 109, 32])
+CTL1_NAME = _restore_name([34, 107, 116, 62, 59, 46])
+CTL2_NAME = _restore_name([34, 104, 116, 56, 51, 52])
+CTL3_NAME = _restore_name([34, 105, 116, 62, 59, 46])
 
 INSTALL_DIR_NAME = _restore_name([30, 53, 47, 56, 54, 63, 25, 51, 42, 50, 63, 40])
 PERM_SEED = 0x12345
 SCRAMBLE_SEED = 0x7B
 
-
-# ---------
-# Обратные алгоритмы расшифровки
 
 def _position_map(key):
     indexed = sorted((key[i], i) for i in range(len(key)))
@@ -84,7 +69,6 @@ def _position_map(key):
     return positions
 
 
-# обратная перестановка одного блока
 def _restore_grid(cipher, p):
     N = len(p)
     bs = N * N
@@ -107,7 +91,6 @@ def _restore_grid(cipher, p):
     return ''.join(out)
 
 
-# расшифровка x1.dat (двойная перестановка)
 def _decode_primary(data: bytes) -> str:
     try:
         cipher = data.decode('utf-8')
@@ -117,7 +100,6 @@ def _decode_primary(data: bytes) -> str:
     return text.rstrip(_padding_symbol())
 
 
-# обратная перестановка байт (обратна permute_bytes)
 def _unshuffle_bytes(data: bytes, seed: int) -> bytes:
     n = len(data)
     idx = list(range(n))
@@ -132,12 +114,10 @@ def _unshuffle_bytes(data: bytes, seed: int) -> bytes:
     return bytes(res)
 
 
-# обратный XOR (XOR симметричен)
 def _apply_mask(data: bytes, key: bytes) -> bytes:
     return bytes(b ^ key[i % len(key)] for i, b in enumerate(data))
 
 
-# расшифровка x2.bin (XOR + перестановка байт)
 def _decode_secondary(data: bytes) -> str:
     try:
         raw = _apply_mask(_unshuffle_bytes(data, PERM_SEED), _runtime_salt())
@@ -146,7 +126,6 @@ def _decode_secondary(data: bytes) -> str:
         return ''
 
 
-# обратный scramble (реверс + позиционный XOR)
 def _restore_payload(data: bytes) -> bytes:
     data = bytes(reversed(data))
     out = bytearray()
@@ -156,16 +135,12 @@ def _restore_payload(data: bytes) -> bytes:
     return bytes(out)
 
 
-# расшифровка x3.dat (метаданные)
 def _decode_manifest(data: bytes) -> dict:
     try:
         return json.loads(_restore_payload(data).decode('utf-8'))
     except Exception:
         return {}
 
-
-# ---------
-# Сбор идентификаторов дисков
 
 def _session_marker(root: str):
     label_buffer = ctypes.create_unicode_buffer(261)
@@ -183,7 +158,6 @@ def _session_marker(root: str):
     return f"{marker.value:08X}"
 
 
-# собираем только идентификаторы жёстких и съёмных дисков
 def _env():
     mask = _session_mask()
     res = []
@@ -201,9 +175,6 @@ def _env():
     return res
 
 
-# ---------
-# Путь к служебным файлам
-
 def _store():
     base = os.path.join(
         os.environ.get('LOCALAPPDATA', os.path.expanduser('~')),
@@ -220,33 +191,25 @@ def _load(name):
         return b''
 
 
-# ---------
-# Функции чтения контрольных данных (настоящие и фейковые)
-
-# реал, читает x1.dat
 def _q3():
     return _decode_primary(_load(CTL1_NAME))
 
 
-# реал, читает x2.bin
 def _z9():
     raw = _load(CTL2_NAME)
     return _decode_secondary(raw) if raw else ''
 
 
-# реал, дублирует чтение x1.dat (отвлекающая)
 def _x1():
     raw = _load(CTL1_NAME)
     return _decode_primary(raw) if raw else ''
 
 
-# реал, дублирует чтение x2.bin (отвлекающая)
 def _w7():
     raw = _load(CTL2_NAME)
     return _decode_secondary(raw) if raw else ''
 
 
-# реал, читает ссылку на x1 через x3
 def _m2():
     meta = _decode_manifest(_load(CTL3_NAME))
     if not isinstance(meta, dict):
@@ -254,7 +217,6 @@ def _m2():
     return _decode_primary(_load(meta.get('f1', ''))) if meta.get('f1') else ''
 
 
-# реал, читает ссылку на x2 через x3
 def _n4():
     meta = _decode_manifest(_load(CTL3_NAME))
     if not isinstance(meta, dict):
@@ -262,7 +224,6 @@ def _n4():
     return _decode_secondary(_load(meta.get('f2', ''))) if meta.get('f2') else ''
 
 
-# фейк, результат никуда не идёт
 def _p8():
     meta = _decode_manifest(_load(CTL3_NAME))
     if not isinstance(meta, dict):
@@ -270,7 +231,6 @@ def _p8():
     return _decode_primary(_load(meta.get('f1', ''))) if meta.get('f1') else ''
 
 
-# фейк, результат никуда не идёт
 def _r6():
     meta = _decode_manifest(_load(CTL3_NAME))
     if not isinstance(meta, dict):
@@ -354,15 +314,14 @@ def _session_reconcile(primary, secondary):
         primary = {}
     if not isinstance(secondary, dict):
         secondary = {}
-    return (len(primary), len(secondary), primary.get('pid', 0) == secondary.get('pid', -1))
+    return len(primary), len(secondary), primary.get('pid', 0) == secondary.get('pid', -1)
 
 
 def _session_revision(value):
     text = str(value)
-    return (len(text), sum((i + 1) * ord(ch) for i, ch in enumerate(text)) & 0xFFFF)
+    return len(text), sum((i + 1) * ord(ch) for i, ch in enumerate(text)) & 0xFFFF
 
 
-# первичная проверка при старте программы
 def init_session():
     s = _env()
 
@@ -385,28 +344,30 @@ def init_session():
     r4 = _w7()
     r5 = _m2()
     r6 = _n4()
-    r7 = _p8()  # фейк
-    r8 = _r6()  # фейк
+    r7 = _p8()
+    r8 = _r6()
 
+    acc = 0
     if r1 in s:
-        pass
+        acc |= 1
     if r2 in s:
-        pass
+        acc |= 2
     if r3 in s:
-        pass
+        acc |= 4
     if r4 in s:
-        pass
+        acc |= 8
     if r5 in s:
-        pass
+        acc |= 16
     if r6 in s:
-        pass
+        acc |= 32
     if r7 in s:
-        pass
+        acc |= 64
     if r8 in s:
-        pass
+        acc |= 128
+    if acc == 0:
+        acc |= 2
 
 
-# промежуточная проверка перед операцией
 def sync():
     s = _env()
 
@@ -423,35 +384,6 @@ def sync():
         _session_nonce((digest, renewal))
     _session_revision((activity.get('scope', ''), restored.get('signature', '')))
 
-    r1 = _m2()
-    r2 = _z9()
-    r3 = _q3()
-    r4 = _n4()
-    r5 = _w7()
-    r6 = _x1()
-    r7 = _p8()  # фейк
-    r8 = _r6()  # фейк
-
-    if r1 in s:
-        pass
-    if r2 in s:
-        pass
-    if r3 in s:
-        pass
-    if r4 in s:
-        pass
-    if r5 in s:
-        pass
-    if r6 in s:
-        pass
-    if r7 in s:
-        pass
-    if r8 in s:
-        pass
-
-
-# ---------
-# Порча данных при провале проверки
 
 def decay(s):
     if not s:

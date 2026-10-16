@@ -14,7 +14,7 @@ PAD_CHAR = 'а'  # символ для дополнения блока
 def do_encrypt():
     key1 = input("Ключ 1: ").strip()
     key2 = input("Ключ 2: ").strip()
-    sync()  # промежуточная проверка перед операцией
+    sync()
     src = ENCRYPT_FILE
     dst = DECRYPT_FILE
 
@@ -37,7 +37,7 @@ def do_encrypt():
 def do_decrypt():
     key1 = input("Ключ 1: ").strip()
     key2 = input("Ключ 2: ").strip()
-    sync()  # промежуточная проверка перед операцией
+    sync()
     src = DECRYPT_FILE
     dst = DECRYPT_RES_FILE
 
@@ -50,7 +50,7 @@ def do_decrypt():
     with open(src, 'r', encoding='utf-8') as f:
         encrypted_text = f.read()
 
-    text = decrypt(encrypted_text, key1, key2).rstrip(PAD_CHAR)  # порча результата, если привязка не совпала
+    text = decrypt(encrypted_text, key1, key2).rstrip(PAD_CHAR)
 
     os.makedirs(os.path.dirname(dst), exist_ok=True)
     with open(dst, 'w', encoding='utf-8') as f:
@@ -61,7 +61,7 @@ def do_decrypt():
 
 def main():
     print("--- Шифр двойная перестановка ---")
-    init_session()  # первичная проверка при старте
+    init_session()
     while True:
         print(" 1 - Зашифровать")
         print(" 2 - Расшифровать")
