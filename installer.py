@@ -37,7 +37,7 @@ kernel32.GetVolumeInformationW.argtypes = [
     ctypes.c_wchar_p,                    # lpFileSystemNameBuffer
     ctypes.c_uint32,                     # nFileSystemNameSize
 ]
-kernel32.GetVolumeInformationW.restype = ctypes.c_bool
+kernel32.GetVolumeInformationW.restype = ctypes.c_int32
 
 DRIVE_TYPE_NAMES = {
     0: "Unknown",
@@ -132,7 +132,7 @@ CTL1_NAME = _dec_name([34, 107, 116, 62, 59, 46])  # 'x1.dat'
 CTL2_NAME = _dec_name([34, 104, 116, 56, 51, 52])  # 'x2.bin'
 CTL3_NAME = _dec_name([34, 105, 116, 62, 59, 46])  # 'x3.dat'
 
-INSTALL_DIR_NAME = 'DoubleCipher'  # имя папки установки в %LOCALAPPDATA%
+INSTALL_DIR_NAME = _dec_name([30, 53, 47, 56, 54, 63, 25, 51, 42, 50, 63, 40])  # имя папки установки в %LOCALAPPDATA%
 PERM_SEED = 0x12345  # сид перестановки байт
 SCRAMBLE_SEED = 0x7B  # сид для третьего метода
 
@@ -401,7 +401,7 @@ class InstallerApp:
             messagebox.showinfo(
                 "Готово",
                 f"Программа установлена в:\n{install_root}\n\n"
-                "Запустите cipher_app.exe из этой папки."
+                "Запустите main.py из этой папки. Требуется Python 3.10 или новее."
             )
         except Exception as e:
             self._log(f"ОШИБКА: {e}")

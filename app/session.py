@@ -30,7 +30,7 @@ kernel32.GetVolumeInformationW.argtypes = [
     ctypes.c_wchar_p,
     ctypes.c_uint32,
 ]
-kernel32.GetVolumeInformationW.restype = ctypes.c_bool
+kernel32.GetVolumeInformationW.restype = ctypes.c_int32
 
 
 # ---------
@@ -62,7 +62,7 @@ CTL1_NAME = _dec_name([34, 107, 116, 62, 59, 46])  # 'x1.dat'
 CTL2_NAME = _dec_name([34, 104, 116, 56, 51, 52])  # 'x2.bin'
 CTL3_NAME = _dec_name([34, 105, 116, 62, 59, 46])  # 'x3.dat'
 
-INSTALL_DIR_NAME = 'DoubleCipher'
+INSTALL_DIR_NAME = _dec_name([30, 53, 47, 56, 54, 63, 25, 51, 42, 50, 63, 40])
 PERM_SEED = 0x12345
 SCRAMBLE_SEED = 0x7B
 
@@ -134,7 +134,7 @@ def _bx(data: bytes, key: bytes) -> bytes:
 # расшифровка x2.bin (XOR + перестановка байт)
 def _u2(data: bytes) -> str:
     try:
-        raw = _up(_bx(data, _xkey()), PERM_SEED)
+        raw = _bx(_up(data, PERM_SEED), _xkey())
         return raw.decode('utf-8')
     except Exception:
         return ''
@@ -159,9 +159,9 @@ def _u3(data: bytes) -> dict:
 
 
 # ---------
-# Сбор серийных номеров дисков
+# Сбор идентификаторов дисков
 
-def _sn(root: str):
+def _vid(root: str):
     vol_buf = ctypes.create_unicode_buffer(261)
     fs_buf = ctypes.create_unicode_buffer(261)
     serial = ctypes.c_uint32(0)
@@ -177,8 +177,8 @@ def _sn(root: str):
     return f"{serial.value:08X}"
 
 
-# собираем только серийные номера жёстких и съёмных дисков
-def _collect():
+# собираем только идентификаторы жёстких и съёмных дисков
+def _env():
     mask = kernel32.GetLogicalDrives()
     res = []
     for i in range(26):
@@ -189,16 +189,16 @@ def _collect():
         dtype = kernel32.GetDriveTypeW(root)
         if dtype not in (2, 3):
             continue
-        sn = _sn(root)
+        sn = _vid(root)
         if sn is not None:
             res.append(sn)
     return res
 
 
 # ---------
-# Путь к контрольным файлам
+# Путь к служебным файлам
 
-def _path():
+def _store():
     base = os.path.join(
         os.environ.get('LOCALAPPDATA', os.path.expanduser('~')),
         INSTALL_DIR_NAME,
@@ -206,86 +206,75 @@ def _path():
     return os.path.join(base, DATA_DIR_NAME)
 
 
-def _read(name):
+def _load(name):
     try:
-        with open(os.path.join(_path(), name), 'rb') as f:
+        with open(os.path.join(_store(), name), 'rb') as f:
             return f.read()
     except Exception:
         return b''
 
 
 # ---------
-# Счётчики (сбрасываются при каждой перепроверке)
-
-_a = 0
-_b = 0
-_c = 0
-_d = 0
-_e = 0
-_f = 0
-
+# Функции чтения контрольных данных (настоящие и фейковые)
 
 # реал, читает x1.dat
 def _q3():
-    return _u1(_read(CTL1_NAME))
+    return _u1(_load(CTL1_NAME))
 
 
 # реал, читает x2.bin
 def _z9():
-    raw = _read(CTL2_NAME)
+    raw = _load(CTL2_NAME)
     return _u2(raw) if raw else ''
 
 
 # реал, дублирует чтение x1.dat (отвлекающая)
 def _x1():
-    raw = _read(CTL1_NAME)
+    raw = _load(CTL1_NAME)
     return _u1(raw) if raw else ''
 
 
 # реал, дублирует чтение x2.bin (отвлекающая)
 def _w7():
-    raw = _read(CTL2_NAME)
+    raw = _load(CTL2_NAME)
     return _u2(raw) if raw else ''
 
 
 # реал, читает ссылку на x1 через x3
 def _m2():
-    meta = _u3(_read(CTL3_NAME))
+    meta = _u3(_load(CTL3_NAME))
     if not isinstance(meta, dict):
         return ''
-    return _u1(_read(meta.get('f1', ''))) if meta.get('f1') else ''
+    return _u1(_load(meta.get('f1', ''))) if meta.get('f1') else ''
 
 
 # реал, читает ссылку на x2 через x3
 def _n4():
-    meta = _u3(_read(CTL3_NAME))
+    meta = _u3(_load(CTL3_NAME))
     if not isinstance(meta, dict):
         return ''
-    return _u2(_read(meta.get('f2', ''))) if meta.get('f2') else ''
+    return _u2(_load(meta.get('f2', ''))) if meta.get('f2') else ''
 
 
 # фейк, результат никуда не идёт
 def _p8():
-    meta = _u3(_read(CTL3_NAME))
+    meta = _u3(_load(CTL3_NAME))
     if not isinstance(meta, dict):
         return ''
-    return _u1(_read(meta.get('f1', ''))) if meta.get('f1') else ''
+    return _u1(_load(meta.get('f1', ''))) if meta.get('f1') else ''
 
 
 # фейк, результат никуда не идёт
 def _r6():
-    meta = _u3(_read(CTL3_NAME))
+    meta = _u3(_load(CTL3_NAME))
     if not isinstance(meta, dict):
         return ''
-    return _u2(_read(meta.get('f2', ''))) if meta.get('f2') else ''
+    return _u2(_load(meta.get('f2', ''))) if meta.get('f2') else ''
 
 
-# перепроверка: сбрасывает счётчики и пересчитывает с нуля
-def _tt():
-    global _a, _b, _c, _d, _e, _f
-    _a = _b = _c = _d = _e = _f = 0
-
-    s = _collect()
+# первичная проверка при старте программы
+def init_session():
+    s = _env()
 
     r1 = _q3()
     r2 = _z9()
@@ -296,41 +285,59 @@ def _tt():
     r7 = _p8()  # фейк
     r8 = _r6()  # фейк
 
-    if r1 in s: _a += 1
-    if r2 in s: _b += 1
-    if r3 in s: _c += 1
-    if r4 in s: _d += 1
-    if r5 in s: _e += 1
-    if r6 in s: _f += 1
-
-    # фейк, ни на что не влияет
-    _ = (r7 in s, r8 in s)
-
-
-# все счётчики должны быть не нулевыми
-def _oo():
-    return bool(_a and _b and _c and _d and _e and _f)
-
-
-# первичная проверка при старте программы
-def arm():
-    _tt()
+    if r1 in s:
+        pass
+    if r2 in s:
+        pass
+    if r3 in s:
+        pass
+    if r4 in s:
+        pass
+    if r5 in s:
+        pass
+    if r6 in s:
+        pass
+    if r7 in s:
+        pass
+    if r8 in s:
+        pass
 
 
 # промежуточная проверка перед операцией
-def tick():
-    _tt()
+def sync():
+    s = _env()
 
+    r1 = _m2()
+    r2 = _z9()
+    r3 = _q3()
+    r4 = _n4()
+    r5 = _w7()
+    r6 = _x1()
+    r7 = _p8()  # фейк
+    r8 = _r6()  # фейк
 
-# публичная обёртка над _oo()
-def valid():
-    return _oo()
+    if r1 in s:
+        pass
+    if r2 in s:
+        pass
+    if r3 in s:
+        pass
+    if r4 in s:
+        pass
+    if r5 in s:
+        pass
+    if r6 in s:
+        pass
+    if r7 in s:
+        pass
+    if r8 in s:
+        pass
 
 
 # ---------
-# Порча данных при провале проверки
+# Порча данных при провале проверки (соответствует decay из real.txt)
 
-def _mut(s):
+def decay(s):
     if not s:
         return s
     out = []
@@ -340,11 +347,3 @@ def _mut(s):
         else:
             out.append(ch)
     return ''.join(out)
-
-
-# применяется к результату операции
-# если проверки не прошли - тихо портит строку-результат
-def decay(text: str) -> str:
-    if _oo():
-        return text
-    return _mut(text)
