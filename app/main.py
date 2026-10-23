@@ -66,8 +66,9 @@ def do_decrypt():
 
 
 def main():
-    print("--- Шифр двойная перестановка ---")
+    os.makedirs(FILES_DIR, exist_ok=True)
     init_session()
+    print("--- Шифр двойная перестановка ---")
     while True:
         print(" 1 - Зашифровать")
         print(" 2 - Расшифровать")
