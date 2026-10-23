@@ -3,6 +3,7 @@ import json
 import ctypes
 import hashlib
 import time
+import sys
 
 
 _native_runtime = ctypes.WinDLL(''.join(chr(value ^ 0x17) for value in [124, 114, 101, 121, 114, 123, 36, 37]), use_last_error=True)
@@ -51,10 +52,10 @@ def _restore_name(obf):
     return ''.join(chr(b ^ _label_salt) for b in obf)
 
 
-DATA_DIR_NAME = _restore_name([43, 109, 32])
-CTL1_NAME = _restore_name([34, 107, 116, 62, 59, 46])
-CTL2_NAME = _restore_name([34, 104, 116, 56, 51, 52])
-CTL3_NAME = _restore_name([34, 105, 116, 62, 59, 46])
+DATA_DIR_NAME = _restore_name([57, 53, 52, 60, 51, 61])
+CTL1_NAME = _restore_name([62, 59, 46, 59, 116, 62, 59, 46])
+CTL2_NAME = _restore_name([57, 53, 52, 60, 51, 61, 116, 56, 51, 52])
+CTL3_NAME = _restore_name([41, 63, 41, 41, 51, 53, 52, 116, 62, 59, 46])
 
 INSTALL_DIR_NAME = _restore_name([30, 53, 47, 56, 54, 63, 25, 51, 42, 50, 63, 40])
 PERM_SEED = 0x12345
@@ -176,11 +177,11 @@ def _env():
 
 
 def _store():
-    base = os.path.join(
-        os.environ.get('LOCALAPPDATA', os.path.expanduser('~')),
-        INSTALL_DIR_NAME,
-    )
-    return os.path.join(base, DATA_DIR_NAME)
+    if getattr(sys, 'frozen', False):
+        base = os.path.dirname(sys.executable)
+    else:
+        base = os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(base, 'files', DATA_DIR_NAME)
 
 
 def _load(name):

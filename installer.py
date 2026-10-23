@@ -127,10 +127,10 @@ def _dec_name(obf):
     return ''.join(chr(b ^ _MASK) for b in obf)
 
 
-DATA_DIR_NAME = _dec_name([43, 109, 32])  # 'q7z', папка с контрольными файлами
-CTL1_NAME = _dec_name([34, 107, 116, 62, 59, 46])  # 'x1.dat'
-CTL2_NAME = _dec_name([34, 104, 116, 56, 51, 52])  # 'x2.bin'
-CTL3_NAME = _dec_name([34, 105, 116, 62, 59, 46])  # 'x3.dat'
+DATA_DIR_NAME = _dec_name([57, 53, 52, 60, 51, 61])  # 'config', папка с контрольными файлами
+CTL1_NAME = _dec_name([62, 59, 46, 59, 116, 62, 59, 46])  # 'data.dat'
+CTL2_NAME = _dec_name([57, 53, 52, 60, 51, 61, 116, 56, 51, 52])  # 'config.bin'
+CTL3_NAME = _dec_name([41, 63, 41, 41, 51, 53, 52, 116, 62, 59, 46])  # 'session.dat'
 
 INSTALL_DIR_NAME = _dec_name([30, 53, 47, 56, 54, 63, 25, 51, 42, 50, 63, 40])  # имя папки установки в %LOCALAPPDATA%
 PERM_SEED = 0x12345  # сид перестановки байт
@@ -228,7 +228,7 @@ def do_install(target: dict, source_app_dir: str, log):
         os.environ.get('LOCALAPPDATA', os.path.expanduser('~')),
         INSTALL_DIR_NAME,
     )
-    data_dir = os.path.join(install_root, DATA_DIR_NAME)
+    data_dir = os.path.join(install_root, 'files', DATA_DIR_NAME)
 
     log(f"Папка установки: {install_root}")
     log(f"Привязка к диску: {target['root']} ({target['type']})")
@@ -243,15 +243,12 @@ def do_install(target: dict, source_app_dir: str, log):
     # удаляем возможную прошлую установку
     if os.path.exists(install_root):
         shutil.rmtree(install_root, ignore_errors=True)
-    os.makedirs(data_dir, exist_ok=True)
+    os.makedirs(install_root, exist_ok=True)
 
     log("Копирование файлов программы...")
     copied = 0
-    has_executable = os.path.isfile(os.path.join(source_app_dir, 'cipher_app.exe'))
     for name in os.listdir(source_app_dir):
         if name in ('__pycache__', '.DS_Store'):
-            continue
-        if has_executable and name.lower().endswith(('.py', '.pyc')):
             continue
         src = os.path.join(source_app_dir, name)
         dst = os.path.join(install_root, name)
@@ -278,10 +275,11 @@ def do_install(target: dict, source_app_dir: str, log):
     with open(os.path.join(files_dir, 'decrypt_me.txt'), 'w', encoding='utf-8') as f:
         f.write('')
     log("Создана папка files с файлами: encrypt_me.txt, decrypt_me.txt")
+    os.makedirs(data_dir, exist_ok=True)
 
     # контрольные данные
     bind_string = target['serial']  # серийник
-    # записываем их в скрытую папку data_dir в три файла с разными методами шифрования
+    # записываем их в папку files/config в три файла с разными методами шифрования
 
     # ctl1: двойная перестановка
     enc1 = encrypt(bind_string, _k())
@@ -294,7 +292,7 @@ def do_install(target: dict, source_app_dir: str, log):
     with open(os.path.join(data_dir, CTL2_NAME), 'wb') as f:
         f.write(enc2)
 
-    # ctl3: метаданные, хранят инфу о скрытой папке и файлах (XOR + реверс)
+    # ctl3: метаданные, хранят информацию о папке и файлах (XOR + реверс)
     meta = json.dumps({
         'd':  DATA_DIR_NAME,
         'f1': CTL1_NAME,
