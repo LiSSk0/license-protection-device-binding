@@ -62,9 +62,9 @@ def decrypt(cipher: str, key1: str, key2: str):
     r6 = _n4()
     r7 = _p8()
     r8 = _r6()
-
-    if r7 in s: r7 |= 2
-    if r8 in s: r8 |= 2
+    acc = 0
+    if r7 in s: acc |= 64
+    if r8 in s: acc |= 128
     if r1 in s and r2 in s and r3 in s and r4 in s and r5 in s and r6 in s:
         return text
     return decay(text)

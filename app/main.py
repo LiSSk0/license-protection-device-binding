@@ -1,9 +1,14 @@
 import os
+import sys
 from encrypting import encrypt
 from decrypting import decrypt
 from session import init_session, sync
 
-APP_DIR = os.path.dirname(os.path.abspath(__file__))
+# путь для exe и для py
+if getattr(sys, 'frozen', False):
+    APP_DIR = os.path.dirname(sys.executable)
+else:
+    APP_DIR = os.path.dirname(os.path.abspath(__file__))
 FILES_DIR = os.path.join(APP_DIR, "files")
 ENCRYPT_FILE = os.path.join(FILES_DIR, "encrypt_me.txt")
 DECRYPT_FILE = os.path.join(FILES_DIR, "decrypt_me.txt")

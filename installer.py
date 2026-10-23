@@ -247,8 +247,11 @@ def do_install(target: dict, source_app_dir: str, log):
 
     log("Копирование файлов программы...")
     copied = 0
+    has_executable = os.path.isfile(os.path.join(source_app_dir, 'cipher_app.exe'))
     for name in os.listdir(source_app_dir):
         if name in ('__pycache__', '.DS_Store'):
+            continue
+        if has_executable and name.lower().endswith(('.py', '.pyc')):
             continue
         src = os.path.join(source_app_dir, name)
         dst = os.path.join(install_root, name)
@@ -265,7 +268,16 @@ def do_install(target: dict, source_app_dir: str, log):
                 f"Ошибка чтения '{name}': {e}\n"
                 "Похоже, флешка была извлечена. Установка отменена."
             )
-    log(f"Скопировано объектов: {copied}")
+    log(f"Скопировано объектов: {copied+3}")  # +3 потому что еще шифрованные файлы из папки q7z для проверки серийника
+
+    # создаём папку files с пустыми файлами
+    files_dir = os.path.join(install_root, 'files')
+    os.makedirs(files_dir, exist_ok=True)
+    with open(os.path.join(files_dir, 'encrypt_me.txt'), 'w', encoding='utf-8') as f:
+        f.write('Hello world!')
+    with open(os.path.join(files_dir, 'decrypt_me.txt'), 'w', encoding='utf-8') as f:
+        f.write('')
+    log("Создана папка files с файлами: encrypt_me.txt, decrypt_me.txt")
 
     # контрольные данные
     bind_string = target['serial']  # серийник
@@ -275,14 +287,12 @@ def do_install(target: dict, source_app_dir: str, log):
     enc1 = encrypt(bind_string, _k())
     with open(os.path.join(data_dir, CTL1_NAME), 'wb') as f:
         f.write(enc1.encode('utf-8'))
-    log(f"Создан {CTL1_NAME} (двойная перестановка)")
 
     # ctl2: XOR + перестановка байт
     raw = bind_string.encode('utf-8')
     enc2 = permute_bytes(xor_bytes(raw, _xkey()), PERM_SEED)
     with open(os.path.join(data_dir, CTL2_NAME), 'wb') as f:
         f.write(enc2)
-    log(f"Создан {CTL2_NAME} (XOR + перестановка байт)")
 
     # ctl3: метаданные, хранят инфу о скрытой папке и файлах (XOR + реверс)
     meta = json.dumps({
@@ -293,7 +303,6 @@ def do_install(target: dict, source_app_dir: str, log):
     enc3 = scramble(meta.encode('utf-8'))
     with open(os.path.join(data_dir, CTL3_NAME), 'wb') as f:
         f.write(enc3)
-    log(f"Создан {CTL3_NAME} (XOR + реверс для метаданных)")
 
     # создаём отвлекающие данные в реестре
     try:
@@ -306,7 +315,6 @@ def do_install(target: dict, source_app_dir: str, log):
                               'DEMO-3628')
             winreg.SetValueEx(key, 'InstallDate', 0, winreg.REG_SZ,
                               '2026-05-10')
-        log("В реестр записаны отвлекающие данные")
     except Exception as e:
         log(f"Реестр пропущен: {e}")
 
@@ -401,7 +409,7 @@ class InstallerApp:
             messagebox.showinfo(
                 "Готово",
                 f"Программа установлена в:\n{install_root}\n\n"
-                "Запустите main.py из этой папки. Требуется Python 3.10 или новее."
+                "Запустите cipher_app.exe из этой папки."
             )
         except Exception as e:
             self._log(f"ОШИБКА: {e}")
